@@ -1,0 +1,11 @@
+-- YOU WRITE THIS (load-bearing).
+-- Two tables, two lifecycles:
+--   rides            : booking → destination. Kept. No coordinates.
+--   location_session : pickup area → boarded/cancelled/revoked/timeout. Holds the last-known position + expires_at.
+--   pin_access_log   : who read the pin, when (no coordinates)  [fix R]
+--   geofence_events  : who entered the pickup area, when (no coordinates)  [position disputes]
+--
+-- Postgres has no native TTL. Decide how "expired" is enforced:
+--   (a) on read  : every SELECT filters on expires_at
+--   (b) on purge : a job deletes expired rows
+-- Write the exact SQL for both.
