@@ -162,30 +162,35 @@ func TestBoardedEndsSharing(t *testing.T) {
 }
 
 func TestRebookingGetsNewSession(t *testing.T) {
-	t.Skip("cancelled rider cannot read the driver's next booking")
-
+	// ARRANGE: booking b1 (r1, d1) is cancelled, then the same driver
+	// opens b2 with another rider and sends a position
 	ctx := context.Background()
 	store := NewMemoryStore()
-
 	if err := store.Open(ctx, "b1", "r1", "d1", time.Minute); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Close(ctx, "r1", "cancelled"); err != nil {
+	if err := store.Close(ctx, "b1", "cancelled"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Open(ctx, "b2", "d2", "r2", time.Minute); err != nil {
+	if err := store.Open(ctx, "b2", "r2", "d1", time.Minute); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Heartbeat(ctx, "b2", "r2", Position{Seq: 1}); err != nil {
+	if err := store.Heartbeat(ctx, "b2", "d1", Position{Seq: 1}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := store.ReadCounterpart(ctx, "r1", "b2")
 
+	// ACT: the cancelled rider tries to read the driver's new booking
+	pos, err := store.ReadCounterpart(ctx, "b2", "r1")
+
+	// ASSERT: refused, and no position
 	if !errors.Is(err, ErrNotParticipant) {
-		t.Errorf("Non participant try to read newer session got:%v", err)
+		t.Errorf("want ErrNotParticipant, got %v", err)
 	}
-
+	if pos != (Position{}) {
+		t.Errorf("leaked the driver's new position to the old rider: %+v", pos)
+	}
 }
+
 func TestReadsAreLoggedWithoutCoordinates(t *testing.T) {
 	t.Skip("each read writes an access-log row with no lat/lng")
 }
