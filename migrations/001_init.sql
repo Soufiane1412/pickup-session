@@ -1,11 +1,23 @@
--- YOU WRITE THIS (load-bearing).
--- Two tables, two lifecycles:
---   rides            : booking → destination. Kept. No coordinates.
---   location_session : pickup area → boarded/cancelled/revoked/timeout. Holds the last-known position + expires_at.
---   pin_access_log   : who read the pin, when (no coordinates)  [fix R]
---   geofence_events  : who entered the pickup area, when (no coordinates)  [position disputes]
---
--- Postgres has no native TTL. Decide how "expired" is enforced:
---   (a) on read  : every SELECT filters on expires_at
---   (b) on purge : a job deletes expired rows
--- Write the exact SQL for both.
+-- Two lifecycles: the session (pickup window) and its last-known positions.
+-- Postgres has no native TTL: expiry is enforced ON READ (every SELECT filters on expires_at)
+-- and ON PURGE (a job deletes expired rows).
+
+CREATE TABLE location_session (
+    booking_id   text        PRIMARY KEY,
+    rider_id     text        NOT NULL,
+    driver_id    text        NOT NULL,
+    state        text        NOT NULL CHECK (state IN ('open', 'closed')),
+    expires_at   timestamptz NOT NULL,
+    ttl          interval    NOT NULL,
+    close_reason text                       -- NULL while open
+);
+
+CREATE TABLE last_position (
+    booking_id  text             NOT NULL REFERENCES location_session(booking_id) ON DELETE CASCADE,
+    user_id     text             NOT NULL,
+    lat         double precision NOT NULL,
+    lng         double precision NOT NULL,
+    seq         bigint           NOT NULL,
+    client_at   timestamptz      NOT NULL,
+    PRIMARY KEY (booking_id, user_id)
+);
