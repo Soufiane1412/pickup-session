@@ -177,3 +177,14 @@ func (s *PostgresStore) Close(ctx context.Context, bookingID, reason string) err
 	}
 	return tx.Commit()
 }
+
+func (s *PostgresStore) Participants(ctx context.Context, bookingID string) (string, string, error) {
+	var riderID, driverID string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT rider_id, driver_id FROM location_session WHERE booking_id = $1`, bookingID).
+		Scan(&riderID, &driverID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", ErrSessionClosed
+	}
+	return riderID, driverID, err
+}

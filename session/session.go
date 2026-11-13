@@ -34,3 +34,10 @@ type Store interface {
 	ReadCounterpart(ctx context.Context, bookingID, callerID string) (Position, error)
 	Close(ctx context.Context, bookingID, reason string) error // boarded | cancelled | revoked
 }
+
+// Participants returns who is on a booking. The HTTP layer uses it to
+// authorise actions the store itself doesn't guard (e.g. Close).
+// Unknown booking → ErrSessionClosed.
+type ParticipantLookup interface {
+	Participants(ctx context.Context, bookingID string) (riderID, driverID string, err error)
+}

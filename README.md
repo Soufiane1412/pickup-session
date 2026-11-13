@@ -16,8 +16,21 @@ Born from a real BlaBlaCar pickup that failed and moved to SMS: the driver had t
 | Boarding ends sharing, even if the phone keeps sending | `TestBoardedEndsSharing` |
 | A cancelled rider can't read the driver's next booking | `TestRebookingGetsNewSession` |
 
+## Two stores, one contract
+
+Every invariant runs against **both** implementations of the same `Store` interface:
+
+| Store | How it enforces the rules |
+|---|---|
+| `MemoryStore` | a mutex around find → guards → write |
+| `PostgresStore` | a transaction + `SELECT … FOR UPDATE` row lock; expiry computed with the database clock (`expires_at > now()`), never the app clock |
+
+7 invariants × 2 stores = **14 green**, race-detector clean.
+
 ## Run
 
-    go test ./session/ -v -race   # in-memory store
+    make test       # in-memory store
+    make db-up      # Postgres 16 in Docker, runs migrations/
+    make test-pg    # the same 7 tests against Postgres
 
-Next: the same tests against a Postgres store (`make db-up`, `make test-pg`).
+Next: an HTTP API and a React Native client for the pickup window.

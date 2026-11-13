@@ -98,3 +98,13 @@ func (s *MemoryStore) Close(ctx context.Context, bookingID, reason string) error
 	return nil
 	//Don't know where to transport the reason payload?
 }
+
+func (s *MemoryStore) Participants(ctx context.Context, bookingID string) (string, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.session[bookingID]
+	if !ok {
+		return "", "", ErrSessionClosed
+	}
+	return e.riderID, e.driverID, nil
+}
